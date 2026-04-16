@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ChatInput } from "../components/ChatInput";
+import { ErrorModal } from "../components/ErrorModal";
 import { LoadingDots } from "../components/LoadingDots";
 import { MessageBubble } from "../components/MessageBubble";
 import { UploadPanel } from "../components/UploadPanel";
@@ -120,9 +121,10 @@ export function ChatPage() {
           <div ref={scrollRef} />
         </div>
 
-        {error ? <div className="error-banner">{error}</div> : null}
         <ChatInput disabled={isLoading} onSubmit={handleSend} />
       </section>
+
+      {error ? <ErrorModal message={error} onClose={() => setError(null)} /> : null}
     </main>
   );
 }
