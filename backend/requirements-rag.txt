@@ -3,4 +3,3 @@
 sentence-transformers>=3.0.0
 faiss-cpu==1.11.0.post1
 openai>=1.0.0
-chromadb==1.0.7

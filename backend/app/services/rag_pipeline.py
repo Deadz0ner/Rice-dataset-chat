@@ -110,7 +110,7 @@ class RAGPipelineService:
             )
 
         query_vector = self.embedding_service.embed_query(payload.message)
-        retrieved_rows = self.vector_store.search(query_vector, top_k=5)
+        retrieved_rows = self.vector_store.search(query_vector, top_k=10)
 
         if not retrieved_rows:
             return ChatResponse(

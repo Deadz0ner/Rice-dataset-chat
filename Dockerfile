@@ -7,14 +7,13 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- Stage 2: Python backend + built frontend ----
-FROM python:3.13-slim
+FROM python:3.12-slim
 WORKDIR /app
 
-# Install system deps for faiss-cpu
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && \
-    rm -rf /var/lib/apt/lists/*
+# Install CPU-only PyTorch first (avoids downloading ~2GB of CUDA libs)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# Install Python deps
+# Install remaining Python deps
 COPY backend/requirements.txt backend/requirements-rag.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-rag.txt
 
