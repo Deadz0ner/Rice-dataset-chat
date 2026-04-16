@@ -61,6 +61,11 @@ rows in the dataset, but I can only search for the most relevant rows — I \
 can't scan and aggregate the full dataset. To answer this accurately, you \
 would need a direct database query or analytics tool."
 
+SITUATION D — The user asks a random question which has nothing to do with this rice dataset \
+tell him that you are a data analyst assistant built to answer questions about an Indian rice export/import (EXIM) dataset, and that you don't have the knowledge to answer his question.
+dont hallucinate, or make up things, or dont even tell the answer even if you know it.
+example question: If the user say hi, or greet you, or ask about the weather, or ask about sports, or ask about politics, or ask about movies, or ask about music, or ask about anything that is not related to the Indian rice export/import (EXIM) dataset, you should respond with "I am a data analyst assistant built to answer questions about an Indian rice export/import (EXIM) dataset. I don't have the knowledge to answer your question."
+
 OTHER RULES:
 - Use ONLY the evidence rows. No outside knowledge.
 - Cite exact figures from the rows.
@@ -86,6 +91,7 @@ def build_grounded_messages(
     query: str,
     rows: list[dict[str, Any]],
     total_rows: int = 0,
+    history: list[dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     """Build chat-completion messages that constrain the LLM to retrieved evidence.
 
@@ -94,10 +100,11 @@ def build_grounded_messages(
         rows: Retrieved document dicts from ``VectorStoreService.search()``.
         total_rows: Total number of rows in the full dataset so the LLM
                     understands how small its evidence window is.
+        history: Previous conversation turns as ``[{role, content}, ...]``.
 
     Returns:
-        A two-element list: system message (grounding rules) and user message
-        (evidence + question).
+        A list of messages: system, prior conversation turns, then the
+        current user message with evidence.
     """
     evidence_count = len(rows)
     remaining = max(0, total_rows - evidence_count)
@@ -119,19 +126,28 @@ EVIDENCE ROWS ({evidence_count} retrieved from {total_rows:,} total):
 
 QUESTION: {query}
 
-Determine which situation (A, B, or C) this falls into, then respond accordingly.\
+Decide which situation applies and respond accordingly. Do NOT mention \
+"situation A/B/C" in your response — just answer naturally.\
 """
 
-    messages = [
+    messages: list[dict[str, str]] = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_content},
     ]
+
+    # Include conversation history so the LLM can resolve references
+    # like "the ones", "that exporter", "show me more", etc.
+    if history:
+        for turn in history:
+            messages.append({"role": turn["role"], "content": turn["content"]})
+
+    messages.append({"role": "user", "content": user_content})
 
     total_len = sum(len(m["content"]) for m in messages)
     logger.info(
-        "Grounded prompt built — %d/%d evidence rows, query: '%s', length: %d chars",
+        "Grounded prompt built — %d/%d evidence rows, %d history turns, query: '%s', length: %d chars",
         evidence_count,
         total_rows,
+        len(history) if history else 0,
         query[:80],
         total_len,
     )

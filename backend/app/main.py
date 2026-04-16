@@ -1,14 +1,19 @@
 import threading
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import chat, datasets, health
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.services.dataset_service import DatasetService
 from app.services.rag_pipeline import RAGPipelineService
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
 @asynccontextmanager
@@ -58,6 +63,18 @@ def create_application() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(datasets.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
+
+    # Serve the built React frontend in production
+    if STATIC_DIR.is_dir():
+        app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+
+        @app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            file = STATIC_DIR / full_path
+            if file.is_file():
+                return FileResponse(file)
+            return FileResponse(STATIC_DIR / "index.html")
+
     return app
 
 

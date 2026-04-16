@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 from app.schemas.chat import ChatRequest, ChatResponse, SourceRow
 from app.services.chunking_service import chunk_excel_rows
@@ -37,20 +38,51 @@ class RAGPipelineService:
             if self._indexed:
                 return True
 
+            pipeline_start = time.perf_counter()
+
             dataframe = self.dataset_service.get_dataframe()
             if dataframe is None:
                 return False
 
+            dataset_hash = self.dataset_service.get_file_hash()
+
+            # Try loading from disk cache first
+            if dataset_hash and self.vector_store.load_from_cache(dataset_hash):
+                t0 = time.perf_counter()
+                self.embedding_service.load_model()
+                logger.info("[warm-up] model load: %.2fs", time.perf_counter() - t0)
+                self._indexed = True
+                total = time.perf_counter() - pipeline_start
+                logger.info("[warm-up] total: %.2fs — loaded from cache", total)
+                return True
+
+            # No cache — build from scratch
+            t0 = time.perf_counter()
             documents = chunk_excel_rows(dataframe)
             if not documents:
                 return False
+            logger.info("[warm-up] chunking: %.2fs (%d docs)", time.perf_counter() - t0, len(documents))
 
+            t0 = time.perf_counter()
+            self.embedding_service.load_model()
+            logger.info("[warm-up] model load: %.2fs", time.perf_counter() - t0)
+
+            t0 = time.perf_counter()
             vectors = self.embedding_service.create_embeddings(
                 [doc["content"] for doc in documents]
             )
+            logger.info("[warm-up] embed %d docs: %.2fs", len(documents), time.perf_counter() - t0)
+
+            t0 = time.perf_counter()
             self.vector_store.build_index(documents, vectors)
+            logger.info("[warm-up] build index: %.2fs", time.perf_counter() - t0)
+
+            if dataset_hash:
+                self.vector_store.save_to_cache(dataset_hash)
+
             self._indexed = True
-            logger.info("RAG index built — %d documents indexed", len(documents))
+            total = time.perf_counter() - pipeline_start
+            logger.info("[warm-up] total: %.2fs — %d documents indexed", total, len(documents))
             return True
 
     def warm_up(self) -> None:
@@ -89,7 +121,8 @@ class RAGPipelineService:
         dataframe = self.dataset_service.get_dataframe()
         total_rows = len(dataframe) if dataframe is not None else 0
 
-        messages = build_grounded_messages(payload.message, retrieved_rows, total_rows=total_rows)
+        history = [{"role": h.role, "content": h.content} for h in payload.history] if payload.history else None
+        messages = build_grounded_messages(payload.message, retrieved_rows, total_rows=total_rows, history=history)
         answer = self.llm_service.generate_grounded_response(messages)
 
         sources = [

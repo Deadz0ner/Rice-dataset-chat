@@ -55,13 +55,19 @@ class EmbeddingService:
 
         Subsequent calls return the already-loaded model (singleton pattern).
         The first call downloads the model if it isn't cached locally.
+        Uses local_files_only when the model is already cached to avoid
+        slow HuggingFace network round-trips on every startup.
         """
         if self._model is not None:
             return self._model
 
         logger.info("Loading embedding model '%s'...", self.model_name)
         start = time.perf_counter()
-        self._model = SentenceTransformer(self.model_name)
+        try:
+            self._model = SentenceTransformer(self.model_name, local_files_only=True)
+        except OSError:
+            logger.info("Model not cached locally — downloading from HuggingFace")
+            self._model = SentenceTransformer(self.model_name)
         elapsed = time.perf_counter() - start
         logger.info(
             "Embedding model loaded in %.2fs — dimension: %d",

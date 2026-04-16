@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from pathlib import Path
@@ -17,6 +18,7 @@ class DatasetService:
         self.settings = settings
         self._dataframe: pd.DataFrame | None = None
         self._file_name: str | None = None
+        self._file_hash: str | None = None
 
     def ensure_data_dir(self) -> None:
         Path(self.settings.data_dir).mkdir(parents=True, exist_ok=True)
@@ -64,15 +66,21 @@ class DatasetService:
 
     def load_dataframe(self, file_path: Path) -> None:
         logger.info("Loading dataset from %s", file_path)
+        raw_bytes = file_path.read_bytes()
+        self._file_hash = hashlib.md5(raw_bytes).hexdigest()
         dataframe = pd.read_excel(file_path)
         dataframe = self._normalize_and_clean(dataframe)
         self._dataframe = dataframe
         self._file_name = file_path.name
         logger.info(
-            "Dataset loaded with %s rows and %s columns",
+            "Dataset loaded with %s rows and %s columns (hash: %s)",
             len(dataframe),
             len(dataframe.columns),
+            self._file_hash,
         )
+
+    def get_file_hash(self) -> str | None:
+        return self._file_hash
 
     # ------------------------------------------------------------------
     # Ingestion helpers

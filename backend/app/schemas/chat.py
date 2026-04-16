@@ -1,8 +1,14 @@
 from pydantic import BaseModel, Field
 
 
+class HistoryMessage(BaseModel):
+    role: str
+    content: str
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., description="User question in natural language.")
+    history: list[HistoryMessage] = Field(default_factory=list, description="Previous conversation turns.")
 
 
 class SourceRow(BaseModel):

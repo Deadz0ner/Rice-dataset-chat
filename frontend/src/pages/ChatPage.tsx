@@ -71,7 +71,10 @@ export function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await sendChatMessage({ message });
+      const history = messages
+        .filter((m) => m.id !== "assistant-welcome")
+        .map((m) => ({ role: m.role, content: m.content }));
+      const response = await sendChatMessage({ message, history });
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",

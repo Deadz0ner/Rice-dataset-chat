@@ -17,6 +17,7 @@ export interface ChatSource {
 
 export interface ChatRequest {
   message: string;
+  history: { role: string; content: string }[];
 }
 
 export interface ChatResponse {

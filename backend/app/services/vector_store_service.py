@@ -30,14 +30,18 @@ Why positional mapping matters:
 
 from __future__ import annotations
 
+import json
 import logging
 import time
+from pathlib import Path
 from typing import Any
 
 import faiss
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+_CACHE_DIR = Path("./data/.index_cache")
 
 
 class VectorStoreService:
@@ -102,6 +106,49 @@ class VectorStoreService:
             elapsed,
             self._index.ntotal,
         )
+
+    def save_to_cache(self, dataset_hash: str) -> None:
+        """Persist the FAISS index and documents to disk."""
+        if self._index is None:
+            return
+        try:
+            _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            faiss.write_index(self._index, str(_CACHE_DIR / "index.faiss"))
+            with open(_CACHE_DIR / "documents.json", "w") as f:
+                json.dump(self._documents, f)
+            (_CACHE_DIR / "dataset_hash.txt").write_text(dataset_hash)
+            logger.info("Index cache saved to disk (hash: %s)", dataset_hash)
+        except Exception:
+            logger.exception("Failed to save index cache")
+
+    def load_from_cache(self, dataset_hash: str) -> bool:
+        """Load FAISS index from disk if cache matches the dataset hash."""
+        hash_file = _CACHE_DIR / "dataset_hash.txt"
+        index_file = _CACHE_DIR / "index.faiss"
+        docs_file = _CACHE_DIR / "documents.json"
+
+        if not all(f.exists() for f in (hash_file, index_file, docs_file)):
+            return False
+
+        cached_hash = hash_file.read_text().strip()
+        if cached_hash != dataset_hash:
+            logger.info("Index cache stale (cached: %s, current: %s)", cached_hash, dataset_hash)
+            return False
+
+        try:
+            start = time.perf_counter()
+            self._index = faiss.read_index(str(index_file))
+            with open(docs_file) as f:
+                self._documents = json.load(f)
+            elapsed = time.perf_counter() - start
+            logger.info(
+                "Index cache loaded in %.2fs — %d vectors, %d documents",
+                elapsed, self._index.ntotal, len(self._documents),
+            )
+            return True
+        except Exception:
+            logger.exception("Failed to load index cache — will rebuild")
+            return False
 
     def index_documents(
         self,
