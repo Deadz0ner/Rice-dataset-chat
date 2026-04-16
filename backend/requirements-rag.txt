@@ -1,6 +1,6 @@
-# Optional packages for the future RAG implementation.
-# These are not required for the current scaffold because
-# chunking / embeddings / vector indexing are still TODO placeholders.
+# RAG pipeline dependencies.
 
+sentence-transformers>=3.0.0
 faiss-cpu==1.11.0.post1
+openai>=1.0.0
 chromadb==1.0.7

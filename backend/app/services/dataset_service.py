@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +11,6 @@ from app.core.config import Settings
 from app.schemas.dataset import DatasetLoadResponse, DatasetSummaryResponse
 
 logger = logging.getLogger(__name__)
-
 
 class DatasetService:
     def __init__(self, settings: Settings) -> None:
@@ -42,10 +42,64 @@ class DatasetService:
     def load_dataframe(self, file_path: Path) -> None:
         logger.info("Loading dataset from %s", file_path)
         dataframe = pd.read_excel(file_path)
-        dataframe.columns = [str(column).strip() for column in dataframe.columns]
+        dataframe = self._normalize_and_clean(dataframe)
         self._dataframe = dataframe
         self._file_name = file_path.name
-        logger.info("Dataset loaded with %s rows and %s columns", len(dataframe), len(dataframe.columns))
+        logger.info(
+            "Dataset loaded with %s rows and %s columns",
+            len(dataframe),
+            len(dataframe.columns),
+        )
+
+    # ------------------------------------------------------------------
+    # Ingestion helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _normalize_column_name(name: str) -> str:
+        """'Product Description' → 'product_description', 'Value_FC' → 'value_fc'."""
+        name = str(name).strip().lower()
+        name = re.sub(r"[^a-z0-9]+", "_", name)
+        return name.strip("_")
+
+    def _normalize_and_clean(self, df: pd.DataFrame) -> pd.DataFrame:
+        # 1. Normalize column names to snake_case
+        df.columns = [self._normalize_column_name(c) for c in df.columns]
+
+        # 2. Drop the serial-number column ('s') — it's just a spreadsheet index
+        if "s" in df.columns:
+            df = df.drop(columns=["s"])
+
+        # 3. Strip whitespace from string columns and collapse internal whitespace
+        for col in df.select_dtypes(include="object").columns:
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.strip()
+                .str.replace(r"\s+", " ", regex=True)
+                .str.replace(r"_x000D_", "", regex=False)  # Excel carriage-return artefact
+            )
+
+        # 4. Fill missing string values with empty string, numeric with 0
+        for col in df.select_dtypes(include="object").columns:
+            df[col] = df[col].replace("nan", "").fillna("")
+        for col in df.select_dtypes(include="number").columns:
+            df[col] = df[col].fillna(0)
+
+        # 5. Add a stable row_id that survives re-loads
+        df = df.reset_index(drop=True)
+        df.insert(0, "row_id", ["row-" + str(i) for i in range(len(df))])
+
+        # 6. Deduplicate identical rows (keep first, preserve row_id)
+        subset = [c for c in df.columns if c != "row_id"]
+        before = len(df)
+        df = df.drop_duplicates(subset=subset, keep="first").reset_index(drop=True)
+        df["row_id"] = ["row-" + str(i) for i in range(len(df))]
+        after = len(df)
+        if before != after:
+            logger.info("Dropped %d duplicate rows", before - after)
+
+        return df
 
     def get_dataframe(self) -> pd.DataFrame | None:
         return self._dataframe

@@ -14,7 +14,7 @@ const starterMessage: ChatMessage = {
   id: "assistant-welcome",
   role: "assistant",
   content:
-    "Upload your rice Excel dataset, then ask natural-language questions. Answers are designed to stay grounded in the dataset pipeline.",
+    "Upload your Excel dataset, then ask questions in natural language. All answers are grounded strictly in the uploaded data.",
 };
 
 export function ChatPage() {
@@ -98,7 +98,7 @@ export function ChatPage() {
             <h1>Rice Dataset Assistant</h1>
           </div>
           <p className="chat-subtitle">
-            Ask questions in plain English and route them through a FastAPI-ready RAG scaffold.
+            Ask questions in plain English about the uploaded dataset.
           </p>
         </header>
 
