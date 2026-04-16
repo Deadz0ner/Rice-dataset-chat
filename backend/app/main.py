@@ -1,3 +1,4 @@
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -29,6 +30,8 @@ async def lifespan(app: FastAPI):
     dataset_service.ensure_data_dir()
     if settings.default_dataset_path:
         dataset_service.preload_default_dataset(settings.default_dataset_path)
+
+    threading.Thread(target=rag_pipeline.warm_up, daemon=True).start()
 
     yield
 

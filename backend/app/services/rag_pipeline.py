@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from app.schemas.chat import ChatRequest, ChatResponse, SourceRow
 from app.services.chunking_service import chunk_excel_rows
@@ -20,34 +21,54 @@ class RAGPipelineService:
         self.vector_store = VectorStoreService(backend=vector_store_backend)
         self.llm_service = LLMService(provider=llm_provider)
         self._indexed = False
+        self._index_lock = threading.Lock()
 
     def _ensure_index(self) -> bool:
         """Build the vector index from the current dataset if not already built.
 
         Returns True if the index is ready, False if no data is available.
+        Thread-safe: a lock prevents concurrent builds from the background
+        warm-up and an incoming query.
         """
         if self._indexed:
             return True
 
-        dataframe = self.dataset_service.get_dataframe()
-        if dataframe is None:
-            return False
+        with self._index_lock:
+            if self._indexed:
+                return True
 
-        documents = chunk_excel_rows(dataframe)
-        if not documents:
-            return False
+            dataframe = self.dataset_service.get_dataframe()
+            if dataframe is None:
+                return False
 
-        vectors = self.embedding_service.create_embeddings(
-            [doc["content"] for doc in documents]
-        )
-        self.vector_store.build_index(documents, vectors)
-        self._indexed = True
-        logger.info("RAG index built — %d documents indexed", len(documents))
-        return True
+            documents = chunk_excel_rows(dataframe)
+            if not documents:
+                return False
+
+            vectors = self.embedding_service.create_embeddings(
+                [doc["content"] for doc in documents]
+            )
+            self.vector_store.build_index(documents, vectors)
+            self._indexed = True
+            logger.info("RAG index built — %d documents indexed", len(documents))
+            return True
+
+    def warm_up(self) -> None:
+        """Pre-build the index in the background so the first query is fast."""
+        logger.info("Background warm-up started")
+        try:
+            ready = self._ensure_index()
+            if ready:
+                logger.info("Background warm-up complete — index is ready")
+            else:
+                logger.info("Background warm-up skipped — no dataset loaded yet")
+        except Exception:
+            logger.exception("Background warm-up failed — first query will retry")
 
     def invalidate_index(self) -> None:
         """Call after a new dataset is uploaded to force re-indexing."""
-        self._indexed = False
+        with self._index_lock:
+            self._indexed = False
 
     def answer_query(self, payload: ChatRequest) -> ChatResponse:
         if not self._ensure_index():
