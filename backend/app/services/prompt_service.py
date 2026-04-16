@@ -29,24 +29,43 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """\
+_SYSTEM_PROMPT_TEMPLATE = """\
 You are a data analyst assistant. You answer questions about an Indian rice \
-export/import (EXIM) dataset strictly using the EVIDENCE ROWS provided below.
+export/import (EXIM) dataset.
 
-Rules:
-1. Use ONLY the evidence rows to answer. Do NOT use outside knowledge.
-2. If the evidence rows do not contain enough information to answer the \
-question, say: "The provided data does not contain enough information to \
-answer this question."
-3. When citing numbers (quantities, values, rates), use the exact figures \
-from the evidence rows.
-4. Keep answers concise, factual, and structured. Use bullet points or \
-short paragraphs where appropriate.
-5. If the user asks for aggregations (totals, averages, counts) that require \
-data beyond the retrieved rows, note that your answer is based on the top \
-matching rows, not the full dataset.
-6. Never invent exporter names, countries, quantities, or any other data \
-point not present in the evidence.\
+HOW THIS SYSTEM WORKS:
+The full dataset has {total_rows:,} rows. A search system retrieved the \
+{evidence_count} rows below as the closest matches to the user's question. \
+You can only see these {evidence_count} rows, not the other {remaining:,}.
+
+YOU MUST HANDLE THREE SITUATIONS DIFFERENTLY:
+
+SITUATION A — The user asks about specific shipments, exporters, dates, or \
+transactions AND your evidence rows contain matching data.
+→ Answer confidently and in detail from the evidence. No disclaimers needed. \
+This is what you are built for.
+
+SITUATION B — The user asks about specific shipments, dates, or transactions \
+BUT your evidence rows do NOT contain a match (wrong dates, wrong countries, \
+wrong products).
+→ Say: "I searched the dataset but didn't find a record matching [what they \
+asked for]. The closest records I found are about [briefly describe what the \
+rows actually contain]. Try rephrasing your question or asking about a \
+different date/exporter/product."
+Do NOT blame the 5-row limit. The issue is that the search didn't find a match.
+
+SITUATION C — The user asks for rankings, totals, counts, "most", "least", \
+"top", "how many", "compare", or any aggregation across the whole dataset.
+→ Say: "This question needs a count/ranking/total across all {total_rows:,} \
+rows in the dataset, but I can only search for the most relevant rows — I \
+can't scan and aggregate the full dataset. To answer this accurately, you \
+would need a direct database query or analytics tool."
+
+OTHER RULES:
+- Use ONLY the evidence rows. No outside knowledge.
+- Cite exact figures from the rows.
+- Keep answers concise, factual, and structured.
+- Never invent data not in the evidence.\
 """
 
 
@@ -66,58 +85,55 @@ def _format_evidence_row(index: int, row: dict[str, Any]) -> str:
 def build_grounded_messages(
     query: str,
     rows: list[dict[str, Any]],
+    total_rows: int = 0,
 ) -> list[dict[str, str]]:
     """Build chat-completion messages that constrain the LLM to retrieved evidence.
 
-    Returns a list of ``{"role": ..., "content": ...}`` dicts suitable for
-    any OpenAI-compatible chat completion API.
-
     Args:
         query: The user's natural-language question.
-        rows: Retrieved document dicts from ``VectorStoreService.search()``,
-              each containing ``row_id``, ``content``, ``metadata``, ``score``.
+        rows: Retrieved document dicts from ``VectorStoreService.search()``.
+        total_rows: Total number of rows in the full dataset so the LLM
+                    understands how small its evidence window is.
 
     Returns:
         A two-element list: system message (grounding rules) and user message
         (evidence + question).
     """
+    evidence_count = len(rows)
+    remaining = max(0, total_rows - evidence_count)
+
+    system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
+        total_rows=total_rows,
+        evidence_count=evidence_count,
+        remaining=remaining,
+    )
+
     evidence_blocks = [_format_evidence_row(i, row) for i, row in enumerate(rows)]
     evidence_section = "\n\n".join(evidence_blocks)
 
     user_content = f"""\
-EVIDENCE ROWS ({len(rows)} rows retrieved):
+EVIDENCE ROWS ({evidence_count} retrieved from {total_rows:,} total):
 ---
 {evidence_section}
 ---
 
 QUESTION: {query}
 
-Answer based strictly on the evidence rows above.\
+Determine which situation (A, B, or C) this falls into, then respond accordingly.\
 """
 
     messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
 
     total_len = sum(len(m["content"]) for m in messages)
     logger.info(
-        "Grounded prompt built — %d evidence rows, query: '%s', total length: %d chars",
-        len(rows),
+        "Grounded prompt built — %d/%d evidence rows, query: '%s', length: %d chars",
+        evidence_count,
+        total_rows,
         query[:80],
         total_len,
     )
 
     return messages
-
-
-def build_grounded_prompt(
-    query: str,
-    rows: list[dict[str, Any]],
-) -> str:
-    """Legacy single-string wrapper around ``build_grounded_messages``.
-
-    Kept for backward compatibility with code that expects a flat string.
-    """
-    messages = build_grounded_messages(query, rows)
-    return "\n\n".join(m["content"] for m in messages)

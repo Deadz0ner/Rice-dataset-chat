@@ -86,7 +86,10 @@ class RAGPipelineService:
                 grounded=False,
             )
 
-        messages = build_grounded_messages(payload.message, retrieved_rows)
+        dataframe = self.dataset_service.get_dataframe()
+        total_rows = len(dataframe) if dataframe is not None else 0
+
+        messages = build_grounded_messages(payload.message, retrieved_rows, total_rows=total_rows)
         answer = self.llm_service.generate_grounded_response(messages)
 
         sources = [

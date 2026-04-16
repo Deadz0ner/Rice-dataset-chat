@@ -23,7 +23,7 @@ export function ChatPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const scrollRef = useAutoScroll(messages);
+  const scrollRef = useAutoScroll(messages, isLoading);
 
   useEffect(() => {
     async function loadSummary() {
@@ -102,7 +102,7 @@ export function ChatPage() {
           </p>
         </header>
 
-        <div className="chat-window" ref={scrollRef}>
+        <div className="chat-window">
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
@@ -114,6 +114,7 @@ export function ChatPage() {
               <LoadingDots />
             </div>
           ) : null}
+          <div ref={scrollRef} />
         </div>
 
         {error ? <div className="error-banner">{error}</div> : null}

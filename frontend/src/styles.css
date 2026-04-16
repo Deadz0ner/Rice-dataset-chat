@@ -1,26 +1,26 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-  background: #f5f3ef;
-  color: #1a1713;
+  background: #0e0e10;
+  color: #e4e2de;
 
-  --panel: #ffffff;
-  --panel-hover: #faf8f5;
-  --border: #e8e3db;
-  --border-strong: #d4cdc2;
-  --accent: #b5722b;
-  --accent-light: #f0e0cc;
-  --accent-bg: rgba(181, 114, 43, 0.06);
-  --text-secondary: #6b6560;
-  --text-muted: #9c948b;
-  --assistant-bg: #ffffff;
-  --user-bg: #1a1713;
-  --user-text: #faf8f5;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --panel: #1a1a1e;
+  --panel-hover: #222226;
+  --border: #2e2e33;
+  --border-strong: #3e3e44;
+  --accent: #d4943a;
+  --accent-light: #3d2e1a;
+  --accent-bg: rgba(212, 148, 58, 0.08);
+  --text-secondary: #a09a93;
+  --text-muted: #6e6960;
+  --assistant-bg: #1a1a1e;
+  --user-bg: #d4943a;
+  --user-text: #0e0e10;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;
@@ -66,6 +66,11 @@ button, textarea, input {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .eyebrow {
@@ -186,7 +191,7 @@ button, textarea, input {
   gap: 20px;
   padding: 24px 28px 20px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel-hover) 0%, var(--panel) 100%);
+  background: var(--panel);
 }
 
 .chat-header h1 {
@@ -279,7 +284,7 @@ button, textarea, input {
   margin: 10px 0 0;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   font-size: 0.8rem;
   color: var(--text-secondary);
   border-left: 3px solid var(--border-strong);
@@ -430,7 +435,7 @@ button, textarea, input {
   font-size: 0.82rem;
   line-height: 1.35;
   word-break: break-word;
-  color: var(--color, #1a1713);
+  color: var(--color, var(--text-secondary));
 }
 
 /* ===== Chat Input ===== */
@@ -493,7 +498,7 @@ button, textarea, input {
 .loading-dots {
   display: inline-flex;
   gap: 5px;
-  padding: 8px 0;
+  padding: 8px 20px;
 }
 
 .loading-dots span {
@@ -513,9 +518,9 @@ button, textarea, input {
   margin: 0 28px 8px;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: #3b1515;
+  color: #f87171;
+  border: 1px solid #5c2020;
   font-size: 0.85rem;
 }
 

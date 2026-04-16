@@ -28,8 +28,31 @@ class DatasetService:
             return
         self.load_dataframe(path)
 
+    def auto_detect_dataset(self) -> None:
+        """Load the first Excel file found in data_dir, if any."""
+        data_dir = Path(self.settings.data_dir)
+        if not data_dir.is_dir():
+            return
+        for ext in ("*.xlsx", "*.xls"):
+            files = sorted(data_dir.glob(ext))
+            if files:
+                logger.info("Auto-detected dataset: %s", files[0])
+                self.load_dataframe(files[0])
+                return
+
+    def _clear_data_dir(self) -> None:
+        """Remove all Excel files from data_dir."""
+        data_dir = Path(self.settings.data_dir)
+        if not data_dir.is_dir():
+            return
+        for f in data_dir.iterdir():
+            if f.suffix.lower() in (".xlsx", ".xls"):
+                f.unlink()
+                logger.info("Removed old dataset: %s", f.name)
+
     async def save_and_load_upload(self, file: UploadFile) -> DatasetLoadResponse:
         self.ensure_data_dir()
+        self._clear_data_dir()
         destination = Path(self.settings.data_dir) / file.filename
         content = await file.read()
         destination.write_bytes(content)

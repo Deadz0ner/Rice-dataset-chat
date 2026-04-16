@@ -30,6 +30,8 @@ async def lifespan(app: FastAPI):
     dataset_service.ensure_data_dir()
     if settings.default_dataset_path:
         dataset_service.preload_default_dataset(settings.default_dataset_path)
+    else:
+        dataset_service.auto_detect_dataset()
 
     threading.Thread(target=rag_pipeline.warm_up, daemon=True).start()
 
