@@ -589,6 +589,32 @@ button, textarea, input {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== Sidebar Toggle (mobile only) ===== */
+
+.sidebar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-chevron {
+  font-size: 0.7rem;
+  transition: transform 200ms ease;
+}
+
+.sidebar-chevron-open {
+  transform: rotate(180deg);
+}
+
 /* ===== Responsive ===== */
 
 @media (max-width: 980px) {
@@ -596,13 +622,92 @@ button, textarea, input {
   .chat-panel { min-height: 70vh; }
   .chat-header { flex-direction: column; align-items: flex-start; }
   .chat-subtitle { text-align: left; }
+
+  .sidebar-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .sidebar-toggle { display: flex; }
+
+  .sidebar-content { display: none; }
+
+  .sidebar-panel.sidebar-open .sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
 }
 
 @media (max-width: 640px) {
-  .app-shell { padding: 10px; gap: 10px; }
+  .app-shell { padding: 8px; gap: 8px; }
   .sidebar-panel, .chat-panel { border-radius: var(--radius-md); }
-  .chat-window, .chat-header, .chat-input { padding-left: 16px; padding-right: 16px; }
-  .chat-input { flex-direction: column; }
-  .chat-input button { min-height: 44px; }
+
+  /* Chat panel uses most of the viewport on mobile */
+  .chat-panel { height: calc(100vh - 80px); min-height: 0; }
+
+  /* Header — tighter spacing, smaller title */
+  .chat-header {
+    padding: 12px 14px 10px;
+    gap: 4px;
+  }
+  .chat-header h1 { font-size: 1.05rem; }
+  .chat-subtitle { font-size: 0.72rem; line-height: 1.3; }
+  .eyebrow { font-size: 0.6rem; }
+
+  /* Chat window — tighter padding and message spacing */
+  .chat-window {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  /* Messages — smaller font, tighter padding */
+  .message > .message-body > p { font-size: 0.85rem; line-height: 1.5; }
+  .message-user { padding: 10px 14px; }
+  .message-body { padding: 8px 14px 14px; }
+  .message-assistant .message-header { padding: 12px 14px 0; }
+  .message-header { font-size: 0.62rem; }
+  .message-note { font-size: 0.72rem; padding: 8px 12px; }
+
+  /* Sources — tighter */
+  .message-sources { padding: 10px 14px 12px; }
+  .sources-toggle { font-size: 0.72rem; padding: 4px 12px 4px 8px; }
+  .source-card { padding: 10px 12px; }
   .source-fields { grid-template-columns: 1fr; }
+  .source-field dd { font-size: 0.76rem; }
+  .source-field dt { font-size: 0.58rem; }
+
+  /* Input — smaller, full-width button */
+  .chat-input {
+    flex-direction: row;
+    padding: 10px 14px 12px;
+    gap: 8px;
+  }
+  .chat-input textarea { font-size: 0.82rem; padding: 10px 12px; min-height: 42px; }
+  .chat-input button {
+    min-height: 42px;
+    min-width: 64px;
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Sidebar — smaller toggle on mobile */
+  .sidebar-toggle { font-size: 0.78rem; padding: 8px 12px; }
+  .sidebar-panel h2 { font-size: 1.05rem; }
+  .sidebar-copy { font-size: 0.76rem; }
+  .dataset-card { padding: 12px; }
+  .dataset-card p { font-size: 0.76rem; }
+  .dataset-columns { font-size: 0.7rem !important; }
+
+  /* Loading dots — match message padding */
+  .loading-dots { padding: 8px 14px; }
+
+  /* Error modal */
+  .modal-box { width: min(340px, 94vw); }
+  .modal-title { font-size: 0.82rem; }
+  .modal-body { font-size: 0.8rem; padding: 12px 16px 16px; }
+  .modal-header { padding: 12px 16px; }
 }

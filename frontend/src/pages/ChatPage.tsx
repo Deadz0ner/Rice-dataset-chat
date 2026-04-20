@@ -7,7 +7,7 @@ import { MessageBubble } from "../components/MessageBubble";
 import { UploadPanel } from "../components/UploadPanel";
 import { useAutoScroll } from "../hooks/useAutoScroll";
 import { sendChatMessage } from "../services/chatService";
-import { fetchDatasetSummary, uploadDataset } from "../services/datasetService";
+import { fetchDatasetSummary } from "../services/datasetService";
 import type { ChatMessage } from "../types/chat";
 import type { DatasetSummary } from "../types/dataset";
 
@@ -15,13 +15,12 @@ const starterMessage: ChatMessage = {
   id: "assistant-welcome",
   role: "assistant",
   content:
-    "Upload your Excel dataset, then ask questions in natural language. All answers are grounded strictly in the uploaded data.",
+    "Ask questions in natural language about the rice EXIM dataset. All answers are grounded strictly in the loaded data.",
 };
 
 export function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([starterMessage]);
   const [datasetSummary, setDatasetSummary] = useState<DatasetSummary | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useAutoScroll(messages, isLoading);
@@ -38,27 +37,6 @@ export function ChatPage() {
 
     void loadSummary();
   }, []);
-
-  async function handleUpload(file: File) {
-    setError(null);
-    setIsUploading(true);
-    try {
-      const response = await uploadDataset(file);
-      setDatasetSummary(response.summary);
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: `Dataset loaded: ${response.summary.file_name}. You can start asking questions now.`,
-        },
-      ]);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Dataset upload failed.");
-    } finally {
-      setIsUploading(false);
-    }
-  }
 
   async function handleSend(message: string) {
     setError(null);
@@ -93,7 +71,7 @@ export function ChatPage() {
 
   return (
     <main className="app-shell">
-      <UploadPanel datasetSummary={datasetSummary} uploading={isUploading} onUpload={handleUpload} />
+      <UploadPanel datasetSummary={datasetSummary} />
 
       <section className="chat-panel">
         <header className="chat-header">
@@ -102,7 +80,7 @@ export function ChatPage() {
             <h1>Rice Dataset Assistant</h1>
           </div>
           <p className="chat-subtitle">
-            Ask questions in plain English about the uploaded dataset.
+            Ask questions in plain English about the rice EXIM dataset.
           </p>
         </header>
 
