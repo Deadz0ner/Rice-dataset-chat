@@ -18,7 +18,6 @@ backend/.mypy_cache/
 backend/.ruff_cache/
 backend/.coverage
 backend/htmlcov/
-backend/data/
 *.py[cod]
 
 # ------------------------------
